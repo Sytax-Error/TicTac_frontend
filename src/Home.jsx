@@ -19,6 +19,10 @@ function Home() {
   const [board, setBoard] = useState(initialBoard);
   const [currentTurn, setCurrentTurn] = useState("X");
   const [winner, setWinner] = useState(null);
+  const [score, setScore] = useState({
+    X: 0,
+    O: 0,
+  });
 
   useEffect(() => {
     socket.on("room-update", (data) => {
@@ -27,6 +31,7 @@ function Home() {
       setCurrentTurn(data.currentTurn);
       setWinner(data.winner);
       setWinningCells(data.winningCells || []);
+      setScore(data.score || { X: 0, O: 0 });
       if (data.players.length === 2) {
         setOpponentLeft(false);
       }
@@ -187,11 +192,10 @@ function Home() {
               </motion.button>
 
               <motion.button
-                className="reset-btn"
+                className="leave-btn"
                 onClick={handleLeaveRoom}
                 whileHover={{ scale: 1.08 }}
                 whileTap={{ scale: 0.92 }}
-                style={{ left: "50px", top: "30px", width: "14%" }}
               >
                 <RotateCcw size={18} />
                 Leave Room
@@ -208,27 +212,45 @@ function Home() {
             </div>
           ) : (
             <>
-              <h2>{getGameStatus()}</h2>
-              {playerInfo && <h2>Room Id: {playerInfo.roomId}</h2>}
-              {winner && (
-                <h1>
-                  {winner === "Draw"
-                    ? "Game Draw"
-                    : `🏆 ${winnerPlayer?.username} Wins`}
-                </h1>
-              )}
-              <div className="player-card-row">
-                {players?.map((player) => (
+              <div className="game-console">
+                <div className="console-header">
+                  <div>
+                    <span className="status-label">Game Status</span>
+                    <h1>{getGameStatus()}</h1>
+                  </div>
+
+                  <div className="room-pill">Room #{playerInfo?.roomId}</div>
+                </div>
+
+                {winner && (
+                  <motion.div
+                    className="winner-banner"
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                  >
+                    {winner === "Draw"
+                      ? "🤝 Game Draw"
+                      : `🏆 ${winnerPlayer?.username} Wins`}
+                  </motion.div>
+                )}
+
+                <div className="players-strip">
                   <PlayerCard
-                    key={player.socketId}
-                    name={player?.username}
-                    symbol={player?.symbol}
-                    active={currentTurn === player?.symbol}
+                    name={players[0]?.username}
+                    symbol={players[0]?.symbol}
+                    active={currentTurn === players[0]?.symbol && !winner}
                   />
-                ))}
-              </div>
-              {players.length === 2 && (
-                <div className="board-container">
+
+                  <div className="vs-badge">VS</div>
+
+                  <PlayerCard
+                    name={players[1]?.username}
+                    symbol={players[1]?.symbol}
+                    active={currentTurn === players[1]?.symbol && !winner}
+                  />
+                </div>
+
+                <div className="board-zone">
                   <motion.div
                     className="board"
                     initial={{ scale: 0.9, opacity: 0 }}
@@ -263,7 +285,21 @@ function Home() {
                     )}
                   </motion.div>
                 </div>
-              )}
+
+                <div className="score-panel">
+                  <div className="score-item x-score">
+                    <span>Player X</span>
+                    <strong>{score.X}</strong>
+                  </div>
+
+                  <div className="score-center">Scoreboard</div>
+
+                  <div className="score-item o-score">
+                    <span>Player O</span>
+                    <strong>{score.O}</strong>
+                  </div>
+                </div>
+              </div>
             </>
           )}
         </>
@@ -277,15 +313,20 @@ function PlayerCard({ active, name, symbol }) {
     <motion.div
       className={`player-card ${active ? "active" : ""}`}
       animate={{
-        scale: active ? 1.04 : 1,
-        opacity: active ? 1 : 0.75,
+        scale: active ? 1.03 : 1,
       }}
     >
-      <h2>Name: {name}</h2>
-      {/* <h2>Room Id:{roomId}</h2> */}
-      <h2>Symbol: {symbol}</h2>
+      <div
+        className={`player-symbol ${symbol === "X" ? "x-symbol" : "o-symbol"}`}
+      >
+        {symbol}
+      </div>
+
+      <div>
+        <p>{active ? "Current Turn" : "Player"}</p>
+        <h2>{name}</h2>
+      </div>
     </motion.div>
   );
 }
-
 export default Home;
