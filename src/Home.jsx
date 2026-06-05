@@ -2,7 +2,14 @@ import { useEffect, useState } from "react";
 import { socket } from "./socket";
 import { motion } from "framer-motion";
 import "./Home1.css";
-import { RotateCcw, Trophy } from "lucide-react";
+import { RotateCcw } from "lucide-react";
+import PlayerCard from "./components/PlayerCard";
+import JoinRoom from "./components/JoinRoom";
+import GameBoard from "./components/GameBoard";
+import MessageModal from "./components/MessageModal";
+import PlayAgainModal from "./components/PlayAgainModal";
+import ScoreBoard from "./components/ScoreBoard";
+import GameConsole from "./components/GameConsole";
 
 function Home() {
   const initialBoard = [
@@ -207,33 +214,13 @@ function Home() {
   return (
     <main className="game-page">
       {players.length === 0 && (
-        <div className="join-card">
-          <h1>Tic Tac Toe</h1>
-
-          <p>Create or join a room</p>
-
-          <input
-            type="text"
-            placeholder="Enter your name"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-
-          <input
-            type="text"
-            placeholder="Enter room code"
-            value={roomId}
-            onChange={(e) => setRoomId(e.target.value)}
-          />
-
-          <button
-            onClick={() => {
-              handleJoinRoom();
-            }}
-          >
-            Join Room
-          </button>
-        </div>
+        <JoinRoom
+          username={username}
+          roomId={roomId}
+          setUsername={setUsername}
+          setRoomId={setRoomId}
+          handleJoinRoom={handleJoinRoom}
+        />
       )}
 
       {players?.length > 0 && (
@@ -275,176 +262,37 @@ function Home() {
               <p>Room Code: {playerInfo?.roomId}</p>
             </div>
           ) : (
-            <>
-              <div className="game-console">
-                <div className="console-header">
-                  <div>
-                    <span className="status-label">Game Status</span>
-                    <h1>{getGameStatus()}</h1>
-                  </div>
-
-                  <div className="room-pill">Room #{playerInfo?.roomId}</div>
-                </div>
-
-                {winner && (
-                  <motion.div
-                    className="winner-banner"
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                  >
-                    {winner === "Draw"
-                      ? "🤝 Game Draw"
-                      : `🏆 ${winnerPlayer?.username} Wins`}
-                  </motion.div>
-                )}
-
-                <div className="players-strip">
-                  <PlayerCard
-                    name={players[0]?.username}
-                    symbol={players[0]?.symbol}
-                    active={currentTurn === players[0]?.symbol && !winner}
-                  />
-
-                  <div className="vs-badge">VS</div>
-
-                  <PlayerCard
-                    name={players[1]?.username}
-                    symbol={players[1]?.symbol}
-                    active={currentTurn === players[1]?.symbol && !winner}
-                  />
-                </div>
-
-                <div className="board-zone">
-                  <motion.div
-                    className="board"
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                  >
-                    {board?.map((row, rowIndex) =>
-                      row.map((cell, colIndex) => (
-                        <motion.button
-                          key={`${rowIndex}-${colIndex}`}
-                          className={`cell ${cell === "X" ? "x-cell" : ""} ${
-                            cell === "O" ? "o-cell" : ""
-                          } ${isWinningCell(rowIndex, colIndex) ? "winning-cell" : ""}`}
-                          onClick={() => handleClick(rowIndex, colIndex)}
-                          disabled={
-                            cell !== 0 ||
-                            winner ||
-                            currentTurn !== playerInfo?.symbol
-                          }
-                        >
-                          {cell !== 0 && (
-                            <motion.span
-                              key={`${rowIndex}-${colIndex}-${cell}`}
-                              initial={{ scale: 0, rotate: -90 }}
-                              animate={{ scale: 1, rotate: 0 }}
-                              transition={{ type: "spring", stiffness: 260 }}
-                            >
-                              {cell}
-                            </motion.span>
-                          )}
-                        </motion.button>
-                      )),
-                    )}
-                  </motion.div>
-                </div>
-
-                <div className="score-panel">
-                  <div className="score-item x-score">
-                    <span>Player X</span>
-                    <strong>{score.X}</strong>
-                  </div>
-
-                  <div className="score-center">Scoreboard</div>
-
-                  <div className="score-item o-score">
-                    <span>Player O</span>
-                    <strong>{score.O}</strong>
-                  </div>
-                </div>
-              </div>
-            </>
+            <GameConsole
+              players={players}
+              playerInfo={playerInfo}
+              currentTurn={currentTurn}
+              winner={winner}
+              winnerPlayer={winnerPlayer}
+              score={score}
+              board={board}
+              getGameStatus={getGameStatus}
+              handleClick={handleClick}
+              isWinningCell={isWinningCell}
+              handlePlayAgainRequest={handlePlayAgainRequest}
+            />
           )}
         </>
       )}
       {playAgainRequest && (
-        <div className="modal-overlay">
-          <motion.div
-            className="play-again-modal"
-            initial={{ scale: 0.85, opacity: 0, y: 30 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 220, damping: 18 }}
-          >
-            <div className="modal-icon">🎮</div>
-
-            <h2>Play Again?</h2>
-
-            <p>
-              <strong>{playAgainRequest.username}</strong> wants to start a new
-              match.
-            </p>
-
-            <div className="modal-actions">
-              <button className="reject-btn" onClick={handleRejectPlayAgain}>
-                Reject
-              </button>
-
-              <button className="accept-btn" onClick={handleAcceptPlayAgain}>
-                Accept
-              </button>
-            </div>
-          </motion.div>
-        </div>
+        <PlayAgainModal
+          playAgainRequest={playAgainRequest}
+          onAccept={handleAcceptPlayAgain}
+          onReject={handleRejectPlayAgain}
+        />
       )}
       {messageModal && (
-        <div className="modal-overlay">
-          <motion.div
-            className={`message-modal ${messageModal.type}`}
-            initial={{ scale: 0.85, opacity: 0, y: 30 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 220, damping: 18 }}
-          >
-            <div className="message-icon">
-              {messageModal.type === "error" ? "❌" : "⚠️"}
-            </div>
-
-            <h2>{messageModal.title}</h2>
-
-            <p>{messageModal.message}</p>
-
-            <button
-              className="message-ok-btn"
-              onClick={() => setMessageModal(null)}
-            >
-              OK
-            </button>
-          </motion.div>
-        </div>
+        <MessageModal
+          messageModal={messageModal}
+          onClose={() => setMessageModal(null)}
+        />
       )}
     </main>
   );
 }
 
-function PlayerCard({ active, name, symbol }) {
-  return (
-    <motion.div
-      className={`player-card ${active ? "active" : ""}`}
-      animate={{
-        scale: active ? 1.03 : 1,
-      }}
-    >
-      <div
-        className={`player-symbol ${symbol === "X" ? "x-symbol" : "o-symbol"}`}
-      >
-        {symbol}
-      </div>
-
-      <div>
-        <p>{active ? "Current Turn" : "Player"}</p>
-        <h2>{name}</h2>
-      </div>
-    </motion.div>
-  );
-}
 export default Home;
