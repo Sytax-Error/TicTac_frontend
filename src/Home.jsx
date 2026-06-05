@@ -3,12 +3,11 @@ import { socket } from "./socket";
 import { motion } from "framer-motion";
 import "./Home1.css";
 import { RotateCcw } from "lucide-react";
-import PlayerCard from "./components/PlayerCard";
+import "./components/PlayerCard";
 import JoinRoom from "./components/JoinRoom";
-import GameBoard from "./components/GameBoard";
+import "./components/GameBoard";
 import MessageModal from "./components/MessageModal";
 import PlayAgainModal from "./components/PlayAgainModal";
-import ScoreBoard from "./components/ScoreBoard";
 import GameConsole from "./components/GameConsole";
 
 function Home() {
@@ -142,11 +141,16 @@ function Home() {
     setPlayerInfo(null);
     setBoard(initialBoard);
     setWinner(null);
+    setWinningCells([]);
+    setCurrentTurn("X");
+    setScore({ X: 0, O: 0 });
+    setPlayAgainRequest(null);
+    setMessageModal(null);
   };
 
   const handlePlayAgainRequest = () => {
-    socket.emit("play-again-requested", {
-      roomId: playerInfo.roomId,
+    socket.emit("play-again-request", {
+      roomId: playerInfo?.roomId,
     });
   };
 
@@ -210,7 +214,7 @@ function Home() {
   const isWinningCell = (rowIndex, colIndex) => {
     return winningCells.some(([r, c]) => r === rowIndex && c === colIndex);
   };
-  console.log("pla", playAgainRequest);
+
   return (
     <main className="game-page">
       {players.length === 0 && (
@@ -236,7 +240,7 @@ function Home() {
                 <RotateCcw size={18} />
                 Reset
               </motion.button>
-              {winner && (
+              {winner && !opponentLeft && (
                 <button
                   className="play-again-btn"
                   onClick={handlePlayAgainRequest}
@@ -273,7 +277,6 @@ function Home() {
               getGameStatus={getGameStatus}
               handleClick={handleClick}
               isWinningCell={isWinningCell}
-              handlePlayAgainRequest={handlePlayAgainRequest}
             />
           )}
         </>
