@@ -19,6 +19,8 @@ function Home() {
   const [board, setBoard] = useState(initialBoard);
   const [currentTurn, setCurrentTurn] = useState("X");
   const [winner, setWinner] = useState(null);
+  const [playAgainRequest, setPlayAgainRequest] = useState(null);
+  const [messageModal, setMessageModal] = useState(null);
   const [score, setScore] = useState({
     X: 0,
     O: 0,
@@ -36,9 +38,13 @@ function Home() {
         setOpponentLeft(false);
       }
     });
+    socket.on("play-again-requested", (data) => {
+      setPlayAgainRequest(data);
+    });
 
     return () => {
       socket.off("room-update");
+      socket.off("play-again-requested");
     };
   }, []);
 
@@ -49,7 +55,12 @@ function Home() {
 
     socket.on("player-left", (data) => {
       setOpponentLeft(true);
-      alert(data.message);
+
+      setMessageModal({
+        title: "Opponent Left",
+        message: data.message,
+        type: "warning",
+      });
     });
 
     return () => {
@@ -73,9 +84,12 @@ function Home() {
     }
 
     socket.on("move-error", (data) => {
-      alert(data.message);
+      setMessageModal({
+        title: "Invalid Move",
+        message: data.message,
+        type: "warning",
+      });
     });
-
     return () => {
       socket.off("move-error");
     };
@@ -123,6 +137,51 @@ function Home() {
     setWinner(null);
   };
 
+  const handlePlayAgainRequest = () => {
+    socket.emit("play-again-requested", {
+      roomId: playerInfo.roomId,
+    });
+  };
+
+  const handleAcceptPlayAgain = () => {
+    socket.emit("play-again-accepted", {
+      roomId: playerInfo?.roomId,
+    });
+
+    setPlayAgainRequest(null);
+  };
+
+  useEffect(() => {
+    socket.on("play-again-started", () => {
+      setPlayAgainRequest(null);
+    });
+
+    return () => {
+      socket.off("play-again-started");
+    };
+  }, []);
+
+  useEffect(() => {
+    socket.on("play-again-rejected", (data) => {
+      setMessageModal({
+        title: "Request Rejected",
+        message: data.message,
+        type: "error",
+      });
+    });
+    return () => {
+      socket.off("play-again-rejected");
+    };
+  }, []);
+
+  const handleRejectPlayAgain = () => {
+    socket.emit("play-again-rejected", {
+      roomId: playerInfo?.roomId,
+    });
+
+    setPlayAgainRequest(null);
+  };
+
   const getGameStatus = () => {
     if (opponentLeft) return "Opponent Left";
 
@@ -144,7 +203,7 @@ function Home() {
   const isWinningCell = (rowIndex, colIndex) => {
     return winningCells.some(([r, c]) => r === rowIndex && c === colIndex);
   };
-
+  console.log("pla", playAgainRequest);
   return (
     <main className="game-page">
       {players.length === 0 && (
@@ -190,6 +249,14 @@ function Home() {
                 <RotateCcw size={18} />
                 Reset
               </motion.button>
+              {winner && (
+                <button
+                  className="play-again-btn"
+                  onClick={handlePlayAgainRequest}
+                >
+                  Play Again
+                </button>
+              )}
 
               <motion.button
                 className="leave-btn"
@@ -200,9 +267,6 @@ function Home() {
                 <RotateCcw size={18} />
                 Leave Room
               </motion.button>
-              {opponentLeft && (
-                <h2 style={{ color: "#ff9800" }}>Opponent Left The Game</h2>
-              )}
             </>
           )}
           {players.length < 2 ? (
@@ -303,6 +367,60 @@ function Home() {
             </>
           )}
         </>
+      )}
+      {playAgainRequest && (
+        <div className="modal-overlay">
+          <motion.div
+            className="play-again-modal"
+            initial={{ scale: 0.85, opacity: 0, y: 30 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 220, damping: 18 }}
+          >
+            <div className="modal-icon">🎮</div>
+
+            <h2>Play Again?</h2>
+
+            <p>
+              <strong>{playAgainRequest.username}</strong> wants to start a new
+              match.
+            </p>
+
+            <div className="modal-actions">
+              <button className="reject-btn" onClick={handleRejectPlayAgain}>
+                Reject
+              </button>
+
+              <button className="accept-btn" onClick={handleAcceptPlayAgain}>
+                Accept
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+      {messageModal && (
+        <div className="modal-overlay">
+          <motion.div
+            className={`message-modal ${messageModal.type}`}
+            initial={{ scale: 0.85, opacity: 0, y: 30 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 220, damping: 18 }}
+          >
+            <div className="message-icon">
+              {messageModal.type === "error" ? "❌" : "⚠️"}
+            </div>
+
+            <h2>{messageModal.title}</h2>
+
+            <p>{messageModal.message}</p>
+
+            <button
+              className="message-ok-btn"
+              onClick={() => setMessageModal(null)}
+            >
+              OK
+            </button>
+          </motion.div>
+        </div>
       )}
     </main>
   );
