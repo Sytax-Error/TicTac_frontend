@@ -12,7 +12,7 @@ function Home() {
   ];
   const [username, setUsername] = useState("");
   const [roomId, setRoomId] = useState("");
-
+  const [winningCells, setWinningCells] = useState([]);
   const [playerInfo, setPlayerInfo] = useState(null);
   const [players, setPlayers] = useState([]);
   const [opponentLeft, setOpponentLeft] = useState(false);
@@ -26,6 +26,7 @@ function Home() {
       setBoard(data.board);
       setCurrentTurn(data.currentTurn);
       setWinner(data.winner);
+      setWinningCells(data.winningCells || []);
       if (data.players.length === 2) {
         setOpponentLeft(false);
       }
@@ -135,6 +136,10 @@ function Home() {
 
   const winnerPlayer = players.find((p) => p.symbol === winner);
 
+  const isWinningCell = (rowIndex, colIndex) => {
+    return winningCells.some(([r, c]) => r === rowIndex && c === colIndex);
+  };
+
   return (
     <main className="game-page">
       {players.length === 0 && (
@@ -235,7 +240,7 @@ function Home() {
                           key={`${rowIndex}-${colIndex}`}
                           className={`cell ${cell === "X" ? "x-cell" : ""} ${
                             cell === "O" ? "o-cell" : ""
-                          }`}
+                          } ${isWinningCell(rowIndex, colIndex) ? "winning-cell" : ""}`}
                           onClick={() => handleClick(rowIndex, colIndex)}
                           disabled={
                             cell !== 0 ||
